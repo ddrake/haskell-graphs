@@ -39,6 +39,13 @@ edge (Wedge (e, _)) = e
 tryGetWedge :: Wgraph -> Node -> Node -> Maybe Wedge
 tryGetWedge (Wgraph es) n1 n2  = find (\x -> [n1, n2] \\ enodes x == []) es
 
+-- Given a weighted node and maybe a weighted edge, return the weighted node if its node is in the edge or nothing if not
+tryGetWnode :: Wnode -> Maybe Wedge -> Maybe Wnode
+tryGetWnode wnode Nothing = Nothing
+tryGetWnode wnode (Just wedge)
+    | (node wnode) `elem` (enodes wedge) = Just wnode
+    | otherwise = Nothing
+
 -- Given a node, the start node and the graph, get a Wnode with the initial distance
 wnodeForStart :: Node -> Node -> Wgraph -> Wnode
 wnodeForStart node start graph
@@ -75,27 +82,23 @@ wnodeForNode n wnodes = head . filter (\wn -> node wn == n) $ wnodes
 updateWnodes :: Wgraph -> Wnode -> [Wedge] -> [Wnode] -> [Wnode]
 updateWnodes g curNode incidents wnodes = map (updateWnode g curNode incidents) wnodes
 
-getExtDistance :: Wnode -> Maybe Wedge -> Maybe Float
-getExtDistance _ Nothing = Nothing
-getExtDistance curNode (Just edge) = (dist curNode) + weight edge
-
 -- Given a base node, the edges incident on it and a weighted node, return a (possibly) updated weighted node
 updateWnode :: Wgraph -> Wnode -> [Wedge] -> Wnode -> Wnode
 updateWnode g curNode incidents wnode
-  | node wnode `elem` (nodesForEdges incidents) = 
-    let n = node wnode
-        cn = node curNode
-        origp = pre wnode
-        mWedge = tryGetWedge g n cn
-        ext = ((dist curNode) + (weight . fromJust . tryGetWedge g n $ cn))
-        improved = ext < dist wnode
-    in Wnode {
-        node = n,
-        pre = if improved then cn else origp, 
-        dist = min ext (dist wnode)
-      }
-  | otherwise = wnode
+  | tryGetWnode wnode mWedge == Nothing = wnode 
+  | otherwise = updateConnected curNode mWedge wnode
+  where mWedge = tryGetWedge g (node curNode) (node wnode)
 
+-- Given a base node an edge and a connected weighted node, return an updated weighted node
+updateConnected :: Wnode -> Maybe Wedge -> Wnode -> Wnode
+updateConnected curNode (Just wedge) wnode = 
+  let ext = (dist curNode) + (weight wedge)
+      improved = ext < (dist wnode)
+  in Wnode {
+      node = node wnode,
+      pre = if improved then node curNode else pre wnode,
+      dist = min ext (dist wnode)
+    }
 
 dijkstraAlg :: Wgraph -> [Node] -> Maybe Wnode -> [Wnode] -> (Wgraph, [Node], Maybe Wnode, [Wnode])
 dijkstraAlg g checked Nothing wnodes = (g, checked, Nothing, wnodes)
