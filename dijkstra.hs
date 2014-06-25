@@ -75,16 +75,20 @@ wnodeForNode n wnodes = head . filter (\wn -> node wn == n) $ wnodes
 updateWnodes :: Wgraph -> Wnode -> [Wedge] -> [Wnode] -> [Wnode]
 updateWnodes g curNode incidents wnodes = map (updateWnode g curNode incidents) wnodes
 
+getExtDistance :: Wnode -> Maybe Wedge -> Maybe Float
+getExtDistance _ Nothing = Nothing
+getExtDistance curNode (Just edge) = (dist curNode) + weight edge
+
 -- Given a base node, the edges incident on it and a weighted node, return a (possibly) updated weighted node
 updateWnode :: Wgraph -> Wnode -> [Wedge] -> Wnode -> Wnode
 updateWnode g curNode incidents wnode
-  | curNode == wnode = curNode
   | node wnode `elem` (nodesForEdges incidents) = 
     let n = node wnode
         cn = node curNode
         origp = pre wnode
+        mWedge = tryGetWedge g n cn
         ext = ((dist curNode) + (weight . fromJust . tryGetWedge g n $ cn))
-        improved = ext > dist wnode
+        improved = ext < dist wnode
     in Wnode {
         node = n,
         pre = if improved then cn else origp, 
