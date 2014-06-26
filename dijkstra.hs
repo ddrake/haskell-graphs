@@ -9,7 +9,7 @@ data Wnode = Wnode {node :: Node, pre :: Node, dist :: Float} deriving (Show, Eq
 data Wgraph = Wgraph [Wedge] deriving (Show)
 
 fromList :: [((Node, Node), Float)] -> Wgraph
-fromList list = Wgraph $ map (\((n1, n2), w) -> Wedge (Edge (n1,n2), w)) list
+fromList = Wgraph . map (\((n1, n2), w) -> Wedge (Edge (n1,n2), w))
 
 -- List of weighted edges for a weighted graph
 edges :: Wgraph -> [Wedge]
@@ -21,11 +21,11 @@ enodes (Wedge (Edge (n1, n2), weight)) = [n1, n2]
 
 -- List of all nodes for a list of weighted edges
 nodesForEdges :: [Wedge] -> [Node]
-nodesForEdges wedges = nub . concat . map enodes $ wedges
+nodesForEdges = nub . concat . map enodes
 
 -- List of all nodes for a graph
 nodes :: Wgraph -> [Node]
-nodes graph = nodesForEdges $ edges graph 
+nodes = nodesForEdges . edges
 
 -- The weight of a weighted edge
 weight :: Wedge -> Float
@@ -64,15 +64,15 @@ minimalUnchecked wnodes = Just . minimumBy (compare `on` dist) $ wnodes
 
 -- Given a node and a graph, get a list of weighted edges incident on the node
 incidentWedges :: Node -> Wgraph -> [Wedge]
-incidentWedges node graph = filter (\e -> node `elem` enodes e) . edges $ graph
+incidentWedges node = filter (\e -> node `elem` enodes e) . edges
 
 -- Given a node and a list of weighted nodes, get the corresponding weighted node
 wnodeForNode :: Node -> [Wnode] -> Wnode
-wnodeForNode n wnodes = head . filter (\wn -> node wn == n) $ wnodes
+wnodeForNode n = head . filter (\wn -> node wn == n)
 
 -- Given a base node and the weighted edges incident on it, Update the list of weighted nodes
 updateWnodes :: Wgraph -> Wnode -> [Wedge] -> [Wnode] -> [Wnode]
-updateWnodes g curNode incidents wnodes = map (updateWnode g curNode incidents) wnodes
+updateWnodes g curNode incidents = map (updateWnode g curNode incidents)
 
 -- Given a base node, the edges incident on it and a weighted node, return a (possibly) updated weighted node
 updateWnode :: Wgraph -> Wnode -> [Wedge] -> Wnode -> Wnode
@@ -123,4 +123,6 @@ pathToWnode wnodes wnode
 
 distToNode :: [Wnode] -> Node -> Float
 distToNode wnodes node = dist $ wnodeForNode node wnodes
+
+-- create a graph for testing...
 -- let g = fromList [((1,2),3),((1,5),2),((1,6),9),((2,3),4),((2,6),2),((3,4),1),((3,6),3),((3,7),2),((4,7),2),((5,6),6),((6,7),1)]
