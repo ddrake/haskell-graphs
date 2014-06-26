@@ -31,10 +31,6 @@ nodes graph = nodesForEdges $ edges graph
 weight :: Wedge -> Float
 weight (Wedge (_, w)) = w
 
--- The edge of a weighted edge
-edge :: Wedge -> Edge
-edge (Wedge (e, _)) = e
-
 -- Given a couple of nodes and a graph, try to find a weighted edge incident on the nodes
 tryGetWedge :: Wgraph -> Node -> Node -> Maybe Wedge
 tryGetWedge (Wgraph es) n1 n2  = find (\x -> [n1, n2] \\ enodes x == []) es
@@ -51,28 +47,24 @@ wnodeForStart :: Node -> Node -> Wgraph -> Wnode
 wnodeForStart node start graph
   | node == start = Wnode { node = node, pre = node, dist = 0 }
   | isNothing maybeWedge = Wnode { node = node, pre = start, dist = 1000}
-  | otherwise = Wnode { node = node, pre = start, dist = weight (fromJust maybeWedge) }
+  | otherwise = Wnode { node = node, pre = start, dist = weight . fromJust $ maybeWedge }
   where maybeWedge = tryGetWedge graph node start
 
 initWnodes :: Node -> Wgraph -> [Wnode]
-initWnodes start graph = map (\n -> wnodeForStart n start graph) (nodes graph)
+initWnodes start graph = map (\n -> wnodeForStart n start graph) . nodes $ graph
 
 -- Given a list of Wnodes and a list of checked nodes, return a list of unchecked Wnodes
 unchecked :: [Wnode] -> [Node] -> [Wnode]
-unchecked wnodes checked = filter (\wn -> not ((node wn) `elem` checked)) wnodes
+unchecked wnodes checked = filter (\wn -> not $ (node wn) `elem` checked) wnodes
 
--- Given a list of unchecked Wnodes, return the minimal weighted node
+-- Given a list of unchecked Wnodes, maybe return the minimal weighted node
 minimalUnchecked :: [Wnode] -> Maybe Wnode
 minimalUnchecked [] = Nothing
 minimalUnchecked wnodes = Just . minimumBy (compare `on` dist) $ wnodes
 
--- Given a node and the graph, get a list of weighted edges incident on the node
+-- Given a node and a graph, get a list of weighted edges incident on the node
 incidentWedges :: Node -> Wgraph -> [Wedge]
 incidentWedges node graph = filter (\e -> node `elem` enodes e) . edges $ graph
-
--- Given a weighted edge and a node, get the opposite node
-oppositeNode :: Wedge -> Node -> Node
-oppositeNode (Wedge (Edge (n1, n2), _)) node = if n1 == node then n2 else n1
 
 -- Given a node and a list of weighted nodes, get the corresponding weighted node
 wnodeForNode :: Node -> [Wnode] -> Wnode
@@ -100,16 +92,18 @@ updateConnected curNode (Just wedge) wnode =
       dist = min ext (dist wnode)
     }
 
+-- Recursively perform Dijkstra's algorithm until all nodes have been checked
 dijkstraAlg :: Wgraph -> [Node] -> Maybe Wnode -> [Wnode] -> (Wgraph, [Node], Maybe Wnode, [Wnode])
 dijkstraAlg g checked Nothing wnodes = (g, checked, Nothing, wnodes)
 dijkstraAlg g checked (Just curNode) wnodes =
-      let checked' = nub (node curNode : checked)
+      let checked' = node curNode : checked
           incidents = incidentWedges (node curNode) g
           wnodes' = updateWnodes g curNode incidents wnodes
           unChecked = unchecked wnodes' checked'
           curNode' = minimalUnchecked unChecked
       in dijkstraAlg g checked' curNode' wnodes'
 
+-- Initialize the weighted nodes and bootstrap the recursive algorithm
 dijkstraMain :: Wgraph -> Node -> (Wgraph, [Node], Maybe Wnode, [Wnode]) 
 dijkstraMain g start = 
   let wnodes = initWnodes start g
@@ -117,26 +111,16 @@ dijkstraMain g start =
       checked = []
   in dijkstraAlg g checked curNode wnodes
 
+pathToNode :: [Wnode] -> Node -> [Node]
+pathToNode wnodes start = reverse . map (node) . pathToWnode wnodes . wnodeForNode start $ wnodes
 
--- Algorithm
--- Create a graph 
---    let g = Wgraph [Wedge(Edge (1,2), 3), Wedge(Edge (2,3),4), Wedge(Edge (1,4),12)]
--- Create an empty list of checked nodes
---    let checked = []
--- Choose a start node
---    let start = 1 :: Node
--- Initialize the list of weighted nodes based on the start node selected
---    let wnodes = initWnodes start g
+-- Return a path to a weighted node
+pathToWnode :: [Wnode] -> Wnode -> [Wnode]
+pathToWnode wnodes wnode 
+  | node wnode == pre wnode = [wnode]
+  | otherwise = wnode : pathToWnode wnodes prenode'
+  where prenode' = wnodeForNode (pre wnode) wnodes
 
--- Select the minimal un-checked node (if none we're done)
---    let maybeNode = minimalUnchecked (unchecked wnodes checked)
---    let curNode = fromJust maybeNode
--- Add the node to the checked list
---    let checked' = node curNode : checked
--- Find all weighted edges incident on the node
---    let incidents = incidentWedges (node curNode) g
--- Update the list of weighted nodes
---    let wnodes' = updateWnodes g curNode incidents wnodes
-
-
+distToNode :: [Wnode] -> Node -> Float
+distToNode wnodes node = dist $ wnodeForNode node wnodes
 -- let g = fromList [((1,2),3),((1,5),2),((1,6),9),((2,3),4),((2,6),2),((3,4),1),((3,6),3),((3,7),2),((4,7),2),((5,6),6),((6,7),1)]
