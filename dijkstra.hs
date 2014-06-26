@@ -8,6 +8,10 @@ data Wedge = Wedge (Edge, Float) deriving (Show)
 data Wnode = Wnode {node :: Node, pre :: Node, dist :: Float} deriving (Show, Eq)
 data Wgraph = Wgraph [Wedge] deriving (Show)
 
+fromString :: String -> Wgraph
+fromString s = Wgraph . map parse . map words . lines $ s
+  where parse [n1, n2, w] = Wedge (Edge (read n1 :: Node, read n2 :: Node), read w :: Float)
+
 fromList :: [((Node, Node), Float)] -> Wgraph
 fromList = Wgraph . map (\((n1, n2), w) -> Wedge (Edge (n1,n2), w))
 
