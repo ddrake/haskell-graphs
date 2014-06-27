@@ -1,3 +1,15 @@
+module Wgraph
+( fromString,
+  dijkstra,
+  pathToNode,
+  distToNode,
+  Node,
+  Edge(..),
+  Wedge(..),
+  Wnode(..),
+  Wgraph(..)
+) where
+
 import Data.List
 import Data.Maybe
 import Data.Function
@@ -108,8 +120,8 @@ dijkstraAlg g checked (Just curNode) wnodes =
       in dijkstraAlg g checked' curNode' wnodes'
 
 -- Initialize the weighted nodes and bootstrap the recursive algorithm
-dijkstraMain :: Wgraph -> Node -> (Wgraph, [Node], Maybe Wnode, [Wnode]) 
-dijkstraMain g start = 
+dijkstra :: Wgraph -> Node -> (Wgraph, [Node], Maybe Wnode, [Wnode]) 
+dijkstra g start = 
   let wnodes = initWnodes start g
       curNode = Just (wnodeForNode start wnodes)
       checked = []
