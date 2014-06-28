@@ -20,3 +20,16 @@ Iterate on the following steps
 
 When the algorithm terminates, we can find an optimal path to any node by tracing back through the sequence of precursors.  The distance to any node is stored with the node.
 
+Running the Program
+-------------------
+
+- install the [haskell platform](http://www.haskell.org/platform/)
+- `$ ghc --make dijkstra`
+- run interactively like this: `$ ./dijkstra`
+- pipe it some input like this: `$ cat data | ./dijkstra`
+
+The sample input file (data) is structured like this:
+- a bunch of lines, each representing an edge of a weighted graph by two integers (nodes) and a float (the weight)
+- a blank line, marking the end of the graph definition
+- a line with a single integer representing a start node
+- any number of lines representing end nodes of interest

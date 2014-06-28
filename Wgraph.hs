@@ -1,8 +1,10 @@
 module Wgraph
-( fromString,
+( fromLines,
   dijkstra,
+  dijkstraMain,
   pathToNode,
   distToNode,
+  edges,
   Node,
   Edge(..),
   Wedge(..),
@@ -20,9 +22,13 @@ data Wedge = Wedge (Edge, Float) deriving (Show)
 data Wnode = Wnode {node :: Node, pre :: Node, dist :: Float} deriving (Show, Eq)
 data Wgraph = Wgraph [Wedge] deriving (Show)
 
-fromString :: String -> Wgraph
-fromString s = Wgraph . map parse . map words . lines $ s
+fromLines :: [String] -> Wgraph
+fromLines = Wgraph . map parse . map words
   where parse [n1, n2, w] = Wedge (Edge (read n1 :: Node, read n2 :: Node), read w :: Float)
+
+wedgeFromString :: String -> Wedge
+wedgeFromString line = Wedge (Edge (read n1 :: Node, read n2 :: Node), read w :: Float)
+  where [n1, n2, w] = words line
 
 fromList :: [((Node, Node), Float)] -> Wgraph
 fromList = Wgraph . map (\((n1, n2), w) -> Wedge (Edge (n1,n2), w))
@@ -120,12 +126,18 @@ dijkstraAlg g checked (Just curNode) wnodes =
       in dijkstraAlg g checked' curNode' wnodes'
 
 -- Initialize the weighted nodes and bootstrap the recursive algorithm
-dijkstra :: Wgraph -> Node -> (Wgraph, [Node], Maybe Wnode, [Wnode]) 
-dijkstra g start = 
+dijkstraMain :: Wgraph -> Node -> (Wgraph, [Node], Maybe Wnode, [Wnode]) 
+dijkstraMain g start = 
   let wnodes = initWnodes start g
       curNode = Just (wnodeForNode start wnodes)
       checked = []
   in dijkstraAlg g checked curNode wnodes
+
+getFourth :: (a, b, c, d) -> d
+getFourth (x, y, z, w) = w
+
+dijkstra :: Wgraph -> Node -> [Wnode]
+dijkstra g start = getFourth $ dijkstraMain g start
 
 pathToNode :: [Wnode] -> Node -> [Node]
 pathToNode wnodes start = reverse . map (node) . pathToWnode wnodes . wnodeForNode start $ wnodes
