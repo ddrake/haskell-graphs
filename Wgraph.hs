@@ -21,13 +21,10 @@ data Wedge = Wedge (Edge, Float) deriving (Show)
 data Wnode = Wnode {node :: Node, pre :: Node, dist :: Float} deriving (Show, Eq)
 data Wgraph = Wgraph [Wedge] deriving (Show)
 
+-- Get a weighted graph from some lines of text, where each line specifies two nodes and a weight
 fromLines :: [String] -> Wgraph
 fromLines = Wgraph . map parse . map words
   where parse [n1, n2, w] = Wedge (Edge (read n1 :: Node, read n2 :: Node), read w :: Float)
-
-wedgeFromString :: String -> Wedge
-wedgeFromString line = Wedge (Edge (read n1 :: Node, read n2 :: Node), read w :: Float)
-  where [n1, n2, w] = words line
 
 fromList :: [((Node, Node), Float)] -> Wgraph
 fromList = Wgraph . map (\((n1, n2), w) -> Wedge (Edge (n1,n2), w))
@@ -69,7 +66,7 @@ wnodeForStart node start graph
   | node == start = Wnode { node = node, pre = node, dist = 0 }
   | isNothing maybeWedge = Wnode { node = node, pre = start, dist = infinity}
   | otherwise = Wnode { node = node, pre = start, dist = weight . fromJust $ maybeWedge }
-  where infinity = (2::Float) ^ 128
+  where infinity = 1.0/0.0 :: Float
         maybeWedge = tryGetWedge graph node start
 
 initWnodes :: Node -> Wgraph -> [Wnode]
@@ -118,8 +115,9 @@ updateConnected curNode (Just wedge) wnode =
 dijkstraAlg :: Wgraph -> [Node] -> Maybe Wnode -> [Wnode] -> (Wgraph, [Node], Maybe Wnode, [Wnode])
 dijkstraAlg g checked Nothing wnodes = (g, checked, Nothing, wnodes)
 dijkstraAlg g checked (Just curNode) wnodes =
-      let checked' = node curNode : checked
-          incidents = incidentWedges (node curNode) g
+      let cn = node curNode
+          checked' = cn : checked
+          incidents = incidentWedges cn g
           wnodes' = updateWnodes g curNode incidents wnodes
           unChecked = unchecked wnodes' checked'
           curNode' = minimalUnchecked unChecked
@@ -133,12 +131,15 @@ dijkstraMain g start =
       checked = []
   in dijkstraAlg g checked curNode wnodes
 
-getFourth :: (a, b, c, d) -> d
-getFourth (x, y, z, w) = w
+-- Get the last element of a 4-tuple
+lastOfFour :: (a, b, c, d) -> d
+lastOfFour (x, y, z, w) = w
 
+-- Call the algorithm and return just the weighted nodes
 dijkstra :: Wgraph -> Node -> [Wnode]
-dijkstra g start = getFourth $ dijkstraMain g start
+dijkstra g start = lastOfFour $ dijkstraMain g start
 
+-- Return a path to a node as a list
 pathToNode :: [Wnode] -> Node -> [Node]
 pathToNode wnodes start = reverse . map (node) . pathToWnode wnodes . wnodeForNode start $ wnodes
 
@@ -151,6 +152,3 @@ pathToWnode wnodes wnode
 
 distToNode :: [Wnode] -> Node -> Float
 distToNode wnodes node = dist $ wnodeForNode node wnodes
-
--- create a graph for testing...
--- let g = fromList [((1,2),3),((1,5),2),((1,6),9),((2,3),4),((2,6),2),((3,4),1),((3,6),3),((3,7),2),((4,7),2),((5,6),6),((6,7),1)]
