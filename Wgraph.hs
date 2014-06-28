@@ -15,6 +15,8 @@ import Data.List
 import Data.Maybe
 import Data.Function
 
+-- TYPES AND CONSTRUCTORS
+-------------------------
 type Node = Int
 data Edge = Edge (Node, Node) deriving (Show)
 data Wedge = Wedge (Edge, Float) deriving (Show)
@@ -26,8 +28,8 @@ fromLines :: [String] -> Wgraph
 fromLines = Wgraph . map parse . map words
   where parse [n1, n2, w] = Wedge (Edge (read n1 :: Node, read n2 :: Node), read w :: Float)
 
-fromList :: [((Node, Node), Float)] -> Wgraph
-fromList = Wgraph . map (\((n1, n2), w) -> Wedge (Edge (n1,n2), w))
+-- SIMPLE GETTERS
+-------------------
 
 -- List of weighted edges for a weighted graph
 edges :: Wgraph -> [Wedge]
@@ -49,16 +51,16 @@ nodes = nodesForEdges . edges
 weight :: Wedge -> Float
 weight (Wedge (_, w)) = w
 
--- Given a couple of nodes and a graph, try to find a weighted edge incident on the nodes
-tryGetWedge :: Wgraph -> Node -> Node -> Maybe Wedge
-tryGetWedge (Wgraph es) n1 n2  = find (\x -> [n1, n2] \\ enodes x == []) es
+-- Given a node and a graph, get a list of weighted edges incident on the node
+incidentWedges :: Node -> Wgraph -> [Wedge]
+incidentWedges node = filter (\e -> node `elem` enodes e) . edges
 
--- Given a weighted node and maybe a weighted edge, return the weighted node if its node is in the edge or nothing if not
-tryGetWnode :: Wnode -> Maybe Wedge -> Maybe Wnode
-tryGetWnode wnode Nothing = Nothing
-tryGetWnode wnode (Just wedge)
-    | (node wnode) `elem` (enodes wedge) = Just wnode
-    | otherwise = Nothing
+-- Given a node and a list of weighted nodes, get the corresponding weighted node
+wnodeForNode :: Node -> [Wnode] -> Wnode
+wnodeForNode n = head . filter (\wn -> node wn == n)
+
+-- INITIALIZATION
+-----------------
 
 -- Given a node, the start node and the graph, get a Wnode with the initial distance
 wnodeForStart :: Node -> Node -> Wgraph -> Wnode
@@ -72,22 +74,30 @@ wnodeForStart node start graph
 initWnodes :: Node -> Wgraph -> [Wnode]
 initWnodes start graph = map (\n -> wnodeForStart n start graph) . nodes $ graph
 
+-- Given a couple of nodes and a graph, try to find a weighted edge incident on the nodes
+tryGetWedge :: Wgraph -> Node -> Node -> Maybe Wedge
+tryGetWedge (Wgraph es) n1 n2  = find (\x -> [n1, n2] \\ enodes x == []) es
+
+-- Given a weighted node and maybe a weighted edge, return the weighted node if its node is in the edge or nothing if not
+tryGetWnode :: Wnode -> Maybe Wedge -> Maybe Wnode
+tryGetWnode wnode Nothing = Nothing
+tryGetWnode wnode (Just wedge)
+    | (node wnode) `elem` (enodes wedge) = Just wnode
+    | otherwise = Nothing
+
 -- Given a list of Wnodes and a list of checked nodes, return a list of unchecked Wnodes
-unchecked :: [Wnode] -> [Node] -> [Wnode]
-unchecked wnodes checked = filter (\wn -> not $ (node wn) `elem` checked) wnodes
+unchecked :: [Node] -> [Wnode] -> [Wnode]
+unchecked checked wnodes = filter (\w -> not $ (node w) `elem` checked) wnodes
+
+-- Another way, but still not point free
+unchecked' :: [Node] -> [Wnode] -> [Wnode]
+unchecked' checked = foldr (\w b -> if (node w) `elem` checked then w:b else b) []
+
 
 -- Given a list of unchecked Wnodes, maybe return the minimal weighted node
 minimalUnchecked :: [Wnode] -> Maybe Wnode
 minimalUnchecked [] = Nothing
 minimalUnchecked wnodes = Just . minimumBy (compare `on` dist) $ wnodes
-
--- Given a node and a graph, get a list of weighted edges incident on the node
-incidentWedges :: Node -> Wgraph -> [Wedge]
-incidentWedges node = filter (\e -> node `elem` enodes e) . edges
-
--- Given a node and a list of weighted nodes, get the corresponding weighted node
-wnodeForNode :: Node -> [Wnode] -> Wnode
-wnodeForNode n = head . filter (\wn -> node wn == n)
 
 -- Given a base node and the weighted edges incident on it, Update the list of weighted nodes
 updateWnodes :: Wgraph -> Wnode -> [Wedge] -> [Wnode] -> [Wnode]
@@ -119,7 +129,7 @@ dijkstraAlg g checked (Just curNode) wnodes =
           checked' = cn : checked
           incidents = incidentWedges cn g
           wnodes' = updateWnodes g curNode incidents wnodes
-          unChecked = unchecked wnodes' checked'
+          unChecked = unchecked checked' wnodes'
           curNode' = minimalUnchecked unChecked
       in dijkstraAlg g checked' curNode' wnodes'
 
