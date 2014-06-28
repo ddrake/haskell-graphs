@@ -68,9 +68,10 @@ tryGetWnode wnode (Just wedge)
 wnodeForStart :: Node -> Node -> Wgraph -> Wnode
 wnodeForStart node start graph
   | node == start = Wnode { node = node, pre = node, dist = 0 }
-  | isNothing maybeWedge = Wnode { node = node, pre = start, dist = 1000}
+  | isNothing maybeWedge = Wnode { node = node, pre = start, dist = infinity}
   | otherwise = Wnode { node = node, pre = start, dist = weight . fromJust $ maybeWedge }
-  where maybeWedge = tryGetWedge graph node start
+  where infinity = (2::Float) ^ 128
+        maybeWedge = tryGetWedge graph node start
 
 initWnodes :: Node -> Wgraph -> [Wnode]
 initWnodes start graph = map (\n -> wnodeForStart n start graph) . nodes $ graph
