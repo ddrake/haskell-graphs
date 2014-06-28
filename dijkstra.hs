@@ -16,7 +16,7 @@ main = do
   putStrLn $ "I found " ++ (show $ length wnodes) ++ " weighted nodes!"
   myPutLines $ map show wnodes
   forever $ do
-    putStrLn "Give me an end node"
+    putStrLn "Give me an end node, please."
     ln <- getLine
     let end = read ln :: Node
     putStrLn $ "Path: " ++ (show $ pathToNode wnodes end)

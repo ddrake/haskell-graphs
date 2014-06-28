@@ -1,7 +1,6 @@
 module Wgraph
 ( fromLines,
   dijkstra,
-  dijkstraMain,
   pathToNode,
   distToNode,
   edges,

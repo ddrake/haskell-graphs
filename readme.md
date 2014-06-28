@@ -20,7 +20,7 @@ Iterate on the following steps
    - If the sum of the distance to the current node and the weight of the connecting edge is less than the distance of the node, set its distance to this new distance and its precursor to the current node.
    - otherwise leave it as is.
 
-When the algorithm terminates, we can find an optimal path to any node by tracing back through the sequence of precursors.  The distance to any node is stored with the node.
+When the algorithm terminates, we'll have an updated list of 'weighted nodes', where each such node has an optimal precursor that miminimizes the distance from the start node.  We can find an optimal path to any node by tracing back through the sequence of precursors.
 
 Running the Program
 -------------------
