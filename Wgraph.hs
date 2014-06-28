@@ -15,6 +15,7 @@ import Data.List
 import Data.Maybe
 import Data.Function
 
+-------------------------
 -- TYPES AND CONSTRUCTORS
 -------------------------
 type Node = Int
@@ -28,7 +29,8 @@ fromLines :: [String] -> Wgraph
 fromLines = Wgraph . map parse . map words
   where parse [n1, n2, w] = Wedge (Edge (read n1 :: Node, read n2 :: Node), read w :: Float)
 
--- SIMPLE GETTERS
+-------------------
+-- GENERAL PURPOSE
 -------------------
 
 -- List of weighted edges for a weighted graph
@@ -59,8 +61,29 @@ incidentWedges node = filter (\e -> node `elem` enodes e) . edges
 wnodeForNode :: Node -> [Wnode] -> Wnode
 wnodeForNode n = head . filter (\wn -> node wn == n)
 
+-- Given a couple of nodes and a graph, try to find a weighted edge incident on the nodes
+tryGetWedge :: Wgraph -> Node -> Node -> Maybe Wedge
+tryGetWedge (Wgraph es) n1 n2  = find (\x -> [n1, n2] \\ enodes x == []) es
+
+-- Given a weighted node and maybe a weighted edge, 
+-- return the weighted node if we have an edge and the node is in the edge -- otherwise Nothing
+tryGetWnode :: Wnode -> Maybe Wedge -> Maybe Wnode
+tryGetWnode wnode Nothing = Nothing
+tryGetWnode wnode (Just wedge)
+    | (node wnode) `elem` (enodes wedge) = Just wnode
+    | otherwise = Nothing
+
+-----------------
 -- INITIALIZATION
 -----------------
+
+-- Initialize the weighted nodes and bootstrap the recursive algorithm
+dijkstraMain :: Wgraph -> Node -> (Wgraph, [Node], Maybe Wnode, [Wnode]) 
+dijkstraMain g start = 
+  let wnodes = initWnodes start g
+      curNode = Just (wnodeForNode start wnodes)
+      checked = []
+  in dijkstraAlg g checked curNode wnodes
 
 -- Given a node, the start node and the graph, get a Wnode with the initial distance
 wnodeForStart :: Node -> Node -> Wgraph -> Wnode
@@ -74,25 +97,25 @@ wnodeForStart node start graph
 initWnodes :: Node -> Wgraph -> [Wnode]
 initWnodes start graph = map (\n -> wnodeForStart n start graph) . nodes $ graph
 
--- Given a couple of nodes and a graph, try to find a weighted edge incident on the nodes
-tryGetWedge :: Wgraph -> Node -> Node -> Maybe Wedge
-tryGetWedge (Wgraph es) n1 n2  = find (\x -> [n1, n2] \\ enodes x == []) es
+-----------------
+-- MAIN ALGORITHM
+-----------------
 
--- Given a weighted node and maybe a weighted edge, return the weighted node if its node is in the edge or nothing if not
-tryGetWnode :: Wnode -> Maybe Wedge -> Maybe Wnode
-tryGetWnode wnode Nothing = Nothing
-tryGetWnode wnode (Just wedge)
-    | (node wnode) `elem` (enodes wedge) = Just wnode
-    | otherwise = Nothing
+-- Recursively perform Dijkstra's algorithm until all nodes have been checked
+dijkstraAlg :: Wgraph -> [Node] -> Maybe Wnode -> [Wnode] -> (Wgraph, [Node], Maybe Wnode, [Wnode])
+dijkstraAlg g checked Nothing wnodes = (g, checked, Nothing, wnodes)
+dijkstraAlg g checked (Just curNode) wnodes =
+      let cn = node curNode
+          checked' = cn : checked
+          incidents = incidentWedges cn g
+          wnodes' = updateWnodes g curNode incidents wnodes
+          unChecked = unchecked checked' wnodes'
+          curNode' = minimalUnchecked unChecked
+      in dijkstraAlg g checked' curNode' wnodes'
 
 -- Given a list of Wnodes and a list of checked nodes, return a list of unchecked Wnodes
 unchecked :: [Node] -> [Wnode] -> [Wnode]
 unchecked checked wnodes = filter (\w -> not $ (node w) `elem` checked) wnodes
-
--- Another way, but still not point free
-unchecked' :: [Node] -> [Wnode] -> [Wnode]
-unchecked' checked = foldr (\w b -> if (node w) `elem` checked then w:b else b) []
-
 
 -- Given a list of unchecked Wnodes, maybe return the minimal weighted node
 minimalUnchecked :: [Wnode] -> Maybe Wnode
@@ -121,33 +144,17 @@ updateConnected curNode (Just wedge) wnode =
       dist = min ext (dist wnode)
     }
 
--- Recursively perform Dijkstra's algorithm until all nodes have been checked
-dijkstraAlg :: Wgraph -> [Node] -> Maybe Wnode -> [Wnode] -> (Wgraph, [Node], Maybe Wnode, [Wnode])
-dijkstraAlg g checked Nothing wnodes = (g, checked, Nothing, wnodes)
-dijkstraAlg g checked (Just curNode) wnodes =
-      let cn = node curNode
-          checked' = cn : checked
-          incidents = incidentWedges cn g
-          wnodes' = updateWnodes g curNode incidents wnodes
-          unChecked = unchecked checked' wnodes'
-          curNode' = minimalUnchecked unChecked
-      in dijkstraAlg g checked' curNode' wnodes'
-
--- Initialize the weighted nodes and bootstrap the recursive algorithm
-dijkstraMain :: Wgraph -> Node -> (Wgraph, [Node], Maybe Wnode, [Wnode]) 
-dijkstraMain g start = 
-  let wnodes = initWnodes start g
-      curNode = Just (wnodeForNode start wnodes)
-      checked = []
-  in dijkstraAlg g checked curNode wnodes
-
--- Get the last element of a 4-tuple
-lastOfFour :: (a, b, c, d) -> d
-lastOfFour (x, y, z, w) = w
+----------------------
+-- EXTRACTING RESULTS
+----------------------
 
 -- Call the algorithm and return just the weighted nodes
 dijkstra :: Wgraph -> Node -> [Wnode]
 dijkstra g start = lastOfFour $ dijkstraMain g start
+
+-- Get the last element of a 4-tuple
+lastOfFour :: (a, b, c, d) -> d
+lastOfFour (x, y, z, w) = w
 
 -- Return a path to a node as a list
 pathToNode :: [Wnode] -> Node -> [Node]
