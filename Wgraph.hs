@@ -26,8 +26,8 @@ data Wgraph = Wgraph [Wedge] deriving (Show)
 
 -- Get a weighted graph from some lines of text, where each line specifies two nodes and a weight
 fromLines :: [String] -> Wgraph
-fromLines = Wgraph . map parse . map words
-  where parse [n1, n2, w] = Wedge (Edge (read n1 :: Node, read n2 :: Node), read w :: Float)
+fromLines = Wgraph . map readData . map words
+  where readData [n1, n2, w] = Wedge (Edge (read n1 :: Node, read n2 :: Node), read w :: Float)
 
 -------------------
 -- GENERAL PURPOSE
@@ -66,7 +66,7 @@ tryGetWedge :: Wgraph -> Node -> Node -> Maybe Wedge
 tryGetWedge (Wgraph es) n1 n2  = find (\x -> [n1, n2] \\ enodes x == []) es
 
 -- Given a weighted node and maybe a weighted edge, 
--- return the weighted node if we have an edge and the node is in the edge -- otherwise Nothing
+-- return the weighted node if we were given an edge and the node is in the edge -- otherwise Nothing
 tryGetWnode :: Wnode -> Maybe Wedge -> Maybe Wnode
 tryGetWnode wnode Nothing = Nothing
 tryGetWnode wnode (Just wedge)
@@ -78,12 +78,13 @@ tryGetWnode wnode (Just wedge)
 -----------------
 
 -- Initialize the weighted nodes and bootstrap the recursive algorithm
-dijkstraMain :: Wgraph -> Node -> (Wgraph, [Node], Maybe Wnode, [Wnode]) 
-dijkstraMain g start = 
+dijkstra :: Wgraph -> Node -> [Wnode]
+dijkstra g start = 
   let wnodes = initWnodes start g
       curNode = Just (wnodeForNode start wnodes)
       checked = []
-  in dijkstraAlg g checked curNode wnodes
+      (_, _, _, wnodes') = dijkstraAlg g checked curNode wnodes
+      in wnodes'
 
 -- Given a node, the start node and the graph, get a Wnode with the initial distance
 wnodeForStart :: Node -> Node -> Wgraph -> Wnode
@@ -147,14 +148,6 @@ updateConnected curNode (Just wedge) wnode =
 ----------------------
 -- EXTRACTING RESULTS
 ----------------------
-
--- Call the algorithm and return just the weighted nodes
-dijkstra :: Wgraph -> Node -> [Wnode]
-dijkstra g start = lastOfFour $ dijkstraMain g start
-
--- Get the last element of a 4-tuple
-lastOfFour :: (a, b, c, d) -> d
-lastOfFour (x, y, z, w) = w
 
 -- Return a path to a node as a list
 pathToNode :: [Wnode] -> Node -> [Node]
